@@ -1,0 +1,263 @@
+<!DOCTYPE ahtml>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Binary to Decimal Conversion Simulator</title>
+    <!-- Load Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        /* Custom styles for modern aesthetic */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f3f4f6;
+        }
+        .card {
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1);
+        }
+        .bit-button {
+            transition: all 0.15s ease-in-out;
+            cursor: pointer;
+            user-select: none;
+        }
+        .bit-on {
+            background-color: #10b981; /* Tailwind emerald-500 */
+            color: white;
+            border-color: #059669; /* Tailwind emerald-600 */
+        }
+        .bit-off {
+            background-color: #f9fafb; /* Tailwind gray-50 */
+            color: #374151; /* Tailwind gray-700 */
+            border-color: #d1d5db; /* Tailwind gray-300 */
+        }
+    </style>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'primary': '#4f46e5', /* Indigo */
+                        'secondary': '#10b981', /* Emerald */
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="p-4 md:p-8 flex justify-center">
+
+    <div id="app" class="w-full max-w-5xl">
+        <header class="text-center mb-10">
+            <h1 class="text-4xl font-extrabold text-primary mb-2">Binary Conversion Simulator (8-Bit)</h1>
+            <p class="text-gray-600">Toggle the bits below to compare Unsigned and Two's Complement interpretations.</p>
+        </header>
+
+        <!-- Binary Input Section -->
+        <div class="p-6 bg-white rounded-xl card mb-8">
+            <h2 class="text-2xl font-semibold mb-4 text-gray-800">8-Bit Binary Input</h2>
+            <div id="binaryInput" class="flex justify-center space-x-2">
+                <!-- Bits will be generated here by JavaScript -->
+            </div>
+            <p class="text-center text-sm mt-3 text-gray-500">
+                <span class="font-bold text-red-500">Leftmost Bit:</span> Most Significant Bit (MSB). This bit determines the sign in Two's Complement.
+            </p>
+        </div>
+
+        <!-- Results and Calculation Section -->
+        <div class="grid md:grid-cols-2 gap-8">
+            
+            <!-- Two's Complement Result (Now Column 1 - Left) -->
+            <div class="p-6 bg-white rounded-xl card border-t-4 border-primary">
+                <h3 class="text-2xl font-bold text-primary mb-4">1. Two's Complement</h3>
+                <div class="text-center p-4 mb-4 bg-primary/10 rounded-lg">
+                    <p class="text-sm text-primary-800">Decimal Value</p>
+                    <p id="twosComplementResult" class="text-5xl font-extrabold text-primary">0</p>
+                    <p class="text-xs text-gray-500 mt-2">(Range: -128 to 127)</p>
+                </div>
+                
+                <h4 class="font-semibold text-lg mb-2 text-gray-700">Calculation Breakdown:</h4>
+                <div id="twosComplementBreakdown" class="text-sm space-y-1 bg-gray-50 p-3 rounded-lg font-mono">
+                    <!-- Breakdown will be displayed here -->
+                </div>
+                <p class="mt-4 text-sm text-gray-500">
+                    <span class="font-bold">Rule:</span> The MSB (bit $7$) has a <span class="text-red-600 font-bold">negative weight</span> of $-2^7$ ($-128$). All other bits have positive weights.
+                </p>
+            </div>
+
+            <!-- Unsigned Binary Result (Now Column 2 - Right) -->
+            <div class="p-6 bg-white rounded-xl card border-t-4 border-secondary">
+                <h3 class="text-2xl font-bold text-secondary mb-4">2. Unsigned Binary</h3>
+                <div class="text-center p-4 mb-4 bg-secondary/10 rounded-lg">
+                    <p class="text-sm text-secondary-800">Decimal Value</p>
+                    <p id="unsignedResult" class="text-5xl font-extrabold text-secondary">0</p>
+                    <p class="text-xs text-gray-500 mt-2">(Range: 0 to 255)</p>
+                </div>
+                
+                <h4 class="font-semibold text-lg mb-2 text-gray-700">Calculation Breakdown:</h4>
+                <div id="unsignedBreakdown" class="text-sm space-y-1 bg-gray-50 p-3 rounded-lg font-mono">
+                    <!-- Breakdown will be displayed here -->
+                </div>
+                <p class="mt-4 text-sm text-gray-500">
+                    <span class="font-bold">Rule:</span> Every bit contributes its positive power-of-$2$ weight.
+                </p>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // State: 8 bits initialized to 0
+        let bits = [0, 0, 0, 0, 0, 0, 0, 0]; // [b7, b6, b5, b4, b3, b2, b1, b0]
+
+        // DOM Elements
+        const binaryInputEl = document.getElementById('binaryInput');
+        const unsignedResultEl = document.getElementById('unsignedResult');
+        const unsignedBreakdownEl = document.getElementById('unsignedBreakdown');
+        const twosComplementResultEl = document.getElementById('twosComplementResult');
+        const twosComplementBreakdownEl = document.getElementById('twosComplementBreakdown');
+
+        // --- Core Calculation Logic ---
+
+        /**
+         * Calculates the decimal value assuming an Unsigned interpretation.
+         * Formula: Sum(b_i * 2^i)
+         * @returns {number} The decimal value.
+         */
+        const calculateUnsigned = () => {
+            let decimalValue = 0;
+            let breakdownHTML = '';
+            
+            // Loop from MSB (index 0) to LSB (index 7)
+            for (let i = 0; i < 8; i++) {
+                const bitValue = bits[i];
+                const power = 7 - i; // Power of 2 (7 down to 0)
+                const weight = Math.pow(2, power);
+                const contribution = bitValue * weight;
+
+                decimalValue += contribution;
+                
+                if (bitValue === 1) {
+                    breakdownHTML += `<div>${bitValue} &times; 2^${power} (${weight}) = ${contribution}</div>`;
+                } else {
+                    // Only show 1s contributing to the sum
+                    breakdownHTML += `<div class="text-gray-400">${bitValue} &times; 2^${power} (${weight}) = 0</div>`;
+                }
+            }
+
+            unsignedBreakdownEl.innerHTML = breakdownHTML;
+            return decimalValue;
+        };
+
+        /**
+         * Calculates the decimal value assuming a Two's Complement interpretation.
+         * Formula: (b_7 * -2^7) + Sum(b_i * 2^i) for i=0 to 6
+         * @returns {number} The decimal value.
+         */
+        const calculateTwosComplement = () => {
+            let decimalValue = 0;
+            let breakdownHTML = '';
+
+            // 1. MSB (Most Significant Bit - Index 0) - Negative Weight
+            const msbValue = bits[0];
+            const msbWeight = -128; // -2^7
+            const msbContribution = msbValue * msbWeight;
+            decimalValue += msbContribution;
+            
+            const msbColor = msbValue === 1 ? 'text-red-600' : 'text-gray-400';
+            breakdownHTML += `<div class="font-bold ${msbColor}">${msbValue} &times; -2^7 (-128) = ${msbContribution} (Sign Bit)</div>`;
+
+
+            // 2. Remaining Bits (Index 1 to 7) - Positive Weights
+            for (let i = 1; i < 8; i++) {
+                const bitValue = bits[i];
+                const power = 7 - i; // Power of 2 (6 down to 0)
+                const weight = Math.pow(2, power);
+                const contribution = bitValue * weight;
+
+                decimalValue += contribution;
+                
+                if (bitValue === 1) {
+                    breakdownHTML += `<div>${bitValue} &times; 2^${power} (${weight}) = ${contribution}</div>`;
+                } else {
+                    breakdownHTML += `<div class="text-gray-400">${bitValue} &times; 2^${power} (${weight}) = 0</div>`;
+                }
+            }
+
+            twosComplementBreakdownEl.innerHTML = breakdownHTML;
+            return decimalValue;
+        };
+
+
+        /** Toggles the bit at the given index and updates the display. */
+        const toggleBit = (index) => {
+            bits[index] = 1 - bits[index]; // Flip 0 to 1, or 1 to 0
+            updateDisplay();
+        };
+
+        /** Updates the entire application display. */
+        const updateDisplay = () => {
+            // 1. Update Bit Buttons
+            const bitButtons = document.querySelectorAll('.bit-button');
+            bitButtons.forEach((button, index) => {
+                const bitIndex = parseInt(button.dataset.index);
+                const bitValue = bits[bitIndex];
+
+                button.textContent = bitValue;
+                button.classList.remove('bit-on', 'bit-off');
+                button.classList.add(bitValue === 1 ? 'bit-on' : 'bit-off');
+
+                // Highlight the MSB (index 0)
+                if (bitIndex === 0) {
+                    button.classList.toggle('border-red-500', bitValue === 1);
+                    button.classList.toggle('border-gray-300', bitValue === 0);
+                    button.classList.toggle('ring-4', bitValue === 1);
+                    button.classList.toggle('ring-red-200', bitValue === 1);
+                } else {
+                    button.classList.remove('ring-4', 'ring-red-200');
+                }
+            });
+
+            // 2. Calculate and Update Results
+            const unsignedResult = calculateUnsigned();
+            const twosComplementResult = calculateTwosComplement();
+
+            unsignedResultEl.textContent = unsignedResult;
+            twosComplementResultEl.textContent = twosComplementResult;
+        };
+
+        /** Initializes the bit buttons in the DOM. */
+        const initializeButtons = () => {
+            binaryInputEl.innerHTML = ''; // Clear existing
+            
+            // Loop through all 8 bits (index 0 to 7)
+            for (let i = 0; i < 8; i++) {
+                const button = document.createElement('button');
+                const bitIndex = i;
+
+                button.setAttribute('data-index', bitIndex);
+                button.className = 'bit-button w-12 h-16 md:w-16 md:h-20 text-3xl font-bold rounded-lg border-2 shadow-md';
+                button.textContent = bits[bitIndex];
+                
+                // Add power label below the button
+                const powerLabel = document.createElement('div');
+                powerLabel.className = 'text-xs text-gray-500 mt-1';
+                powerLabel.textContent = `2^${7 - i}`;
+                
+                const container = document.createElement('div');
+                container.className = 'flex flex-col items-center';
+                container.appendChild(button);
+                container.appendChild(powerLabel);
+
+                button.addEventListener('click', () => toggleBit(bitIndex));
+                binaryInputEl.appendChild(container);
+            }
+        };
+
+        // Initialize and display on page load
+        window.onload = () => {
+            initializeButtons();
+            updateDisplay();
+        };
+
+    </script>
+</body>
+</html>
